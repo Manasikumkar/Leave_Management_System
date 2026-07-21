@@ -15,74 +15,52 @@ import java.util.List;
 @RestController
 @RequestMapping("/leaves")
 public class LeaveController {
-    
+
     private final LeaveService leaveService;
-    
+
     public LeaveController(LeaveService leaveService) {
         this.leaveService = leaveService;
     }
-    
+
+    /** Apply for leave. */
     @PostMapping
     public ResponseEntity<LeaveResponseDTO> createLeaveRequest(
-            @Valid @RequestBody LeaveRequestDTO leaveRequestDTO,
+            @Valid @RequestBody LeaveRequestDTO dto,
             @AuthenticationPrincipal User user) {
-        
-        LeaveRequest leaveRequest = leaveService.createLeaveRequest(leaveRequestDTO, user.getId());
-        return ResponseEntity.ok(convertToDTO(leaveRequest));
+        LeaveRequest leaveRequest = leaveService.createLeaveRequest(dto, user.getId());
+        return ResponseEntity.ok(leaveService.getLeaveRequestById(leaveRequest.getId()));
     }
-    
+
+    /** Get the authenticated employee's own leave history. */
     @GetMapping
     public ResponseEntity<List<LeaveResponseDTO>> getMyLeaveRequests(
             @AuthenticationPrincipal User user) {
-        
-        List<LeaveResponseDTO> leaves = leaveService.getLeaveRequestsByEmployee(user.getId());
-        return ResponseEntity.ok(leaves);
+        return ResponseEntity.ok(leaveService.getLeaveRequestsByEmployee(user.getId()));
     }
-    
+
+    /** Get a single leave request by ID. Employees can only see their own. */
     @GetMapping("/{id}")
-    public ResponseEntity<LeaveResponseDTO> getLeaveRequestById(@PathVariable Long id) {
-        LeaveResponseDTO leave = leaveService.getLeaveRequestById(id);
-        return ResponseEntity.ok(leave);
+    public ResponseEntity<LeaveResponseDTO> getLeaveRequestById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user) {
+        LeaveResponseDTO dto = leaveService.getLeaveRequestById(id);
+
+        // Employees may only view their own requests.
+        if (user.getRole() == User.Role.EMPLOYEE &&
+                !dto.getEmployeeId().equals(user.getId())) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "You may only view your own leave requests");
+        }
+
+        return ResponseEntity.ok(dto);
     }
-    
+
+    /** Cancel a pending leave request. Only the owner can cancel. */
     @DeleteMapping("/{id}/cancel")
     public ResponseEntity<Void> cancelLeaveRequest(
             @PathVariable Long id,
             @AuthenticationPrincipal User user) {
-        
         leaveService.cancelLeaveRequest(id, user.getId());
         return ResponseEntity.noContent().build();
-    }
-    
-    private LeaveResponseDTO convertToDTO(LeaveRequest leaveRequest) {
-        LeaveResponseDTO dto = new LeaveResponseDTO();
-        dto.setId(leaveRequest.getId());
-        dto.setLeaveType(leaveRequest.getLeaveType());
-        dto.setStartDate(leaveRequest.getStartDate());
-        dto.setEndDate(leaveRequest.getEndDate());
-        dto.setReason(leaveRequest.getReason());
-        dto.setStatus(leaveRequest.getStatus());
-        dto.setNumberOfDays(leaveRequest.getNumberOfDays());
-        dto.setCreatedAt(leaveRequest.getCreatedAt());
-        dto.setUpdatedAt(leaveRequest.getUpdatedAt());
-        
-        // ✅ CRITICAL: Set manager comments
-        dto.setManagerComments(leaveRequest.getManagerComments());
-        
-        // ✅ Set manager information
-        if (leaveRequest.getManager() != null) {
-            dto.setManagerId(leaveRequest.getManager().getId());
-            dto.setManagerName(leaveRequest.getManager().getFirstName() + " " + 
-                              leaveRequest.getManager().getLastName());
-        }
-        
-        // ✅ Set employee information
-        if (leaveRequest.getEmployee() != null) {
-            dto.setEmployeeId(leaveRequest.getEmployee().getId());
-            dto.setEmployeeName(leaveRequest.getEmployee().getFirstName() + " " + 
-                               leaveRequest.getEmployee().getLastName());
-        }
-        
-        return dto;
     }
 }

@@ -1,65 +1,65 @@
 import React from 'react';
-import { Nav } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { USER_ROLES } from '../../utils/constants';
 
 const Sidebar = () => {
   const location = useLocation();
   const { user } = useAuth();
-  const isManager = user?.role === USER_ROLES.MANAGER;
+  const isActive = (path) => location.pathname === path;
+  const NavItem = ({ path, icon, label }) => (
+    <Link to={path} className={`sidebar-item${isActive(path) ? ' active' : ''}`}>
+      <span className="item-icon">{icon}</span>{label}
+    </Link>
+  );
+  const used  = user?.remainingLeaveDays ?? 0;
+  const total = user?.totalLeaveDays ?? 20;
+  const pct   = Math.min(100, Math.round((used / total) * 100));
 
-  const menuItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊' },
-    { path: '/leaves', label: 'My Leaves', icon: '📋' },
-    { path: '/leave/new', label: 'Request Leave', icon: '➕' },
-    ...(isManager ? [
-      { path: '/manager/pending', label: 'Pending Leaves', icon: '⏳' },
-      { path: '/manager/all', label: 'All Leaves', icon: '📊' }
-    ] : [])
+  const employeeMenu = [
+    { path:'/dashboard',      icon:'🏠', label:'Dashboard' },
+    { path:'/leaves',         icon:'📋', label:'My Leaves' },
+    { path:'/leave/new',      icon:'➕', label:'Apply Leave' },
+    { path:'/leave/balance',  icon:'💰', label:'Leave Balance' },
+    { path:'/leave/advances', icon:'⏫', label:'Leave Advance' },
+    { path:'/leave/donate',   icon:'🤝', label:'Leave Donation' },
   ];
 
+  const hrMenu = [
+    { path:'/hr',              icon:'🎛️',  label:'HR Dashboard' },
+    { path:'/hr/users',        icon:'👥', label:'Employees' },
+    { path:'/manager/pending', icon:'⏳', label:'Pending Leaves' },
+    { path:'/manager/all',     icon:'📁', label:'All Leaves' },
+    { path:'/hr/policies',     icon:'📜', label:'Leave Policies' },
+    { path:'/hr/advances',     icon:'⏫', label:'Leave Advances' },
+    { path:'/hr/donations',    icon:'🤝', label:'Leave Donations' },
+    { path:'/hr/reports',      icon:'📈', label:'Reports' },
+    { path:'/hr/calendar',     icon:'🗓️',  label:'Company Calendar' },
+  ];
+
+  if (user?.role === 'HR_ADMIN') {
+    return (
+      <div className="app-sidebar">
+        <div className="sidebar-section-label">HR Admin Panel</div>
+        {hrMenu.map(item => <NavItem key={item.path} {...item} />)}
+      </div>
+    );
+  }
+
   return (
-    <div className="sidebar bg-light border-end" style={{ width: '250px', minHeight: 'calc(100vh - 56px)' }}>
-      <div className="p-3">
-        <h6 className="text-uppercase text-muted mb-3">Menu</h6>
-        <Nav className="flex-column">
-          {menuItems.map((item) => (
-            <Nav.Link
-              key={item.path}
-              as={Link}
-              to={item.path}
-              className={`mb-2 ${location.pathname === item.path ? 'active bg-primary text-white' : 'text-dark'}`}
-              style={{ borderRadius: '4px', padding: '10px 15px' }}
-            >
-              <span className="me-2">{item.icon}</span>
-              {item.label}
-            </Nav.Link>
-          ))}
-        </Nav>
-        
-        <div className="mt-5">
-          <h6 className="text-uppercase text-muted mb-3">Leave Balance</h6>
-          <div className="p-3 bg-white rounded border">
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <span className="text-muted">Remaining:</span>
-              <strong className="text-success">{user?.remainingLeaveDays || 0} days</strong>
-            </div>
-            <div className="progress" style={{ height: '8px' }}>
-              <div 
-                className="progress-bar bg-success" 
-                role="progressbar" 
-                style={{ width: `${Math.min(100, (user?.remainingLeaveDays || 0) * 5)}%` }}
-                aria-valuenow={user?.remainingLeaveDays || 0}
-                aria-valuemin="0"
-                aria-valuemax="30"
-              ></div>
-            </div>
-          </div>
+    <div className="app-sidebar">
+      <div className="sidebar-section-label">My Account</div>
+      {employeeMenu.map(item => <NavItem key={item.path} {...item} />)}
+      <div className="sidebar-balance-box">
+        <div className="sidebar-balance-label">Leave Balance</div>
+        <div className="sidebar-balance-value">{used}</div>
+        <div className="sidebar-balance-sub">of {total} days remaining</div>
+        <div className="sidebar-progress">
+          <div className="sidebar-progress-bar" style={{ width:`${pct}%` }} />
         </div>
       </div>
     </div>
   );
 };
-
 export default Sidebar;
+
+

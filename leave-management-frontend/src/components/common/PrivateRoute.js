@@ -6,16 +6,10 @@ import LoadingSpinner from '../common/LoadingSpinner';
 const PrivateRoute = ({ roles }) => {
   const { user, loading, isAuthenticated } = useAuth();
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
-  }
-
+  if (loading) return <LoadingSpinner />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (roles && user && !roles.includes(user.role)) {
-    return <Navigate to="/dashboard" />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Outlet />;
